@@ -2,6 +2,10 @@ import { Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 // EC2に関するパッケージをimport
 import * as ec2 from "aws-cdk-lib/aws-ec2";
+// ファイルを読み込むためのパッケージを import
+import { readFileSync } from "fs";
+// CfnOutput を import
+import { CfnOutput } from 'aws-cdk-lib';
 
 export class CdkWorkshopStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -22,6 +26,23 @@ export class CdkWorkshopStack extends Stack {
       machineImage: new ec2.AmazonLinuxImage({
         generation: ec2.AmazonLinuxGeneration.AMAZON_LINUX_2
       }),
+      // EC2インスタンスを配置するサブネットを指定
+      vpcSubnets: {
+        subnetType: ec2.SubnetType.PUBLIC,
+      }
+    });
+
+    // user-data.sh を読み込み、変数に格納
+    const script = readFileSync("./lib/resources/user-data.sh", "utf8");
+
+    // EC2インスタンスにユーザーデータを追加
+    webServer1.addUserData(script);
+
+    // port80,すべてのIPアドレスからのアクセスを許可
+    webServer1.connections.allowFromAnyIpv4(ec2.Port.tcp(80));
+
+    new CfnOutput(this, "WordpressServer1PublicIpAddress", {
+      value: `http://${webServer1.instancePublicIp}`,
     });
   }
 }
